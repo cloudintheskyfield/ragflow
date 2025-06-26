@@ -16,6 +16,8 @@ import nltk
 import os
 import urllib.request
 import argparse
+import time
+from urllib.error import URLError
 
 def get_urls(use_china_mirrors=False) -> Union[str, list[str]]:
     if use_china_mirrors:
@@ -47,6 +49,22 @@ repos = [
     "maidalun1020/bce-embedding-base_v1",
 ]
 
+def download_file_with_retry(url, filename, retries=3, delay=2):
+    """Download a file with a given number of retries."""
+    for i in range(retries):
+        try:
+            print(f"Downloading {filename} from {url} (attempt {i+1})...")
+            urllib.request.urlretrieve(url, filename)
+            return
+        except (URLError, urllib.error.ContentTooShortError) as e:
+            print(f"Error downloading {filename}: {e}")
+            if i < retries - 1:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                print(f"Failed to download {filename} after {retries} attempts.")
+                raise
+
 def download_model(repo_id):
     local_dir = os.path.abspath(os.path.join("huggingface.co", repo_id))
     os.makedirs(local_dir, exist_ok=True)
@@ -63,9 +81,8 @@ if __name__ == "__main__":
     for url in urls:
         download_url = url[0] if isinstance(url, list) else url
         filename = url[1] if isinstance(url, list) else url.split("/")[-1]
-        print(f"Downloading {filename} from {download_url}...")
         if not os.path.exists(filename):
-            urllib.request.urlretrieve(download_url, filename)
+            download_file_with_retry(download_url, filename)
 
     local_dir = os.path.abspath('nltk_data')
     for data in ['wordnet', 'punkt', 'punkt_tab']:

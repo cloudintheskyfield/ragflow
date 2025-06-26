@@ -1320,4 +1320,111 @@ class VisionParser(RAGFlowPdfParser):
 
 
 if __name__ == "__main__":
-    pass
+    import argparse
+    from pathlib import Path
+    import time
+
+    def RAGFlow_parser_test(args):
+        # Configure logging
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logger = logging.getLogger("PdfParserTest")
+
+        # Create output directory
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Output will be saved to: {output_dir.absolute()}")
+
+        # Define callback function for progress
+        def a_callback(prog=None, msg=None):
+            if msg:
+                logger.info(msg)
+
+        # Select parser
+        if args.parser == 'deepdoc':
+            logger.info("Using RAGFlowPdfParser (DeepDoc)")
+            parser = RAGFlowPdfParser()
+        elif args.parser == 'plain':
+            logger.info("Using PlainParser")
+            parser = PlainParser()
+        else:
+            logger.error(f"Unknown parser type: {args.parser}")
+            return
+
+        # Test total_page_number
+        try:
+            logger.info("\nTEST 1: Getting total page number")
+            start_time = time.time()
+            total_pages = RAGFlowPdfParser.total_page_number(args.file_path)
+            elapsed = time.time() - start_time
+            logger.info(f"Total pages: {total_pages} (completed in {elapsed:.2f}s)")
+        except Exception as e:
+            logger.error(f"Failed to get total page number: {e}")
+
+        # Run the parser
+        logger.info(f"\nTEST 2: Parsing PDF from page {args.from_page} to {args.to_page}")
+        start_time = time.time()
+        
+        # The __call__ method of RAGFlowPdfParser has a different signature
+        if isinstance(parser, RAGFlowPdfParser):
+            # It returns (boxes, tables)
+            sections, tables = parser(args.file_path, zoomin=args.zoomin, return_html=True)
+            
+            # Save main content
+            output_text_file = output_dir / f"{Path(args.file_path).stem}_sections.txt"
+            with open(output_text_file, "w", encoding="utf-8") as f:
+                for i, section in enumerate(sections):
+                    f.write(f"--- Section {i+1} (Layout: {section.get('layout_type', 'N/A')}) ---\n")
+                    f.write(parser.remove_tag(section['text']) + "\n\n")
+            logger.info(f"Saved {len(sections)} sections to {output_text_file}")
+
+            # Save tables
+            if tables:
+                output_table_file = output_dir / f"{Path(args.file_path).stem}_tables.html"
+                with open(output_table_file, "w", encoding="utf-8") as f:
+                    for i, (table_img, html_content) in enumerate(tables):
+                        f.write(f"<h2>Table {i+1}</h2>\n")
+                        f.write(html_content)
+                        f.write("<hr>\n")
+                        if not args.no_image and table_img:
+                            img_path = output_dir / f"table_{i+1}.png"
+                            table_img.save(img_path)
+                            f.write(f'<img src="table_{i+1}.png" alt="Table {i+1} image"><br><br>')
+                logger.info(f"Saved {len(tables)} tables to {output_table_file}")
+
+            # Save cropped images for sections
+            if not args.no_image:
+                sections_dir = output_dir / "sections"
+                sections_dir.mkdir(exist_ok=True)
+                for i, section in enumerate(sections[:20]): # limit to first 20 sections
+                    try:
+                        img, _ = parser.crop(section['text'], need_position=True)
+                        if img:
+                            img.save(sections_dir / f"section_{i+1}_{section.get('layout_type', 'N/A')}.png")
+                    except Exception as e:
+                        logger.warning(f"Could not crop image for section {i+1}: {e}")
+
+        elif isinstance(parser, PlainParser):
+            # It returns (lines, [])
+            lines, _ = parser(args.file_path, from_page=args.from_page, to_page=args.to_page)
+            output_text_file = output_dir / f"{Path(args.file_path).stem}_plain_text.txt"
+            with open(output_text_file, "w", encoding="utf-8") as f:
+                for line, _ in lines:
+                    f.write(line + "\n")
+            logger.info(f"Saved {len(lines)} lines to {output_text_file}")
+
+        elapsed = time.time() - start_time
+        logger.info(f"Parsing completed in {elapsed:.2f} seconds")
+        logger.info("\nAll tests completed")
+
+    # Setup command-line argument parser
+    parser = argparse.ArgumentParser(description='Test PDF parsing functionality.')
+    parser.add_argument('file_path', default='', type=str, help='Path to the PDF file to be parsed.')
+    parser.add_argument('--parser', type=str, choices=['deepdoc', 'plain'], default='deepdoc', help='The parser to use.')
+    parser.add_argument('--from-page', type=int, default=0, help='The starting page for parsing.')
+    parser.add_argument('--to-page', type=int, default=10000, help='The ending page for parsing.')
+    parser.add_argument('--zoomin', type=int, default=3, help='Zoom factor for rendering page images.')
+    parser.add_argument('--output-dir', type=str, default='./pdf_parser_output', help='Directory to save the output files.')
+    parser.add_argument('--no-image', action='store_true', help='Do not save any image files (tables, sections).')
+    
+    args = parser.parse_args()
+    RAGFlow_parser_test(args)
