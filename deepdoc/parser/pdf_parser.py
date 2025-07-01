@@ -70,7 +70,7 @@ class RAGFlowPdfParser:
             self.layouter = LayoutRecognizer("layout")
         self.tbl_det = TableStructureRecognizer()
 
-        self.updown_cnt_mdl = xgb.Booster()
+        self.updown_cnt_mdl = xgb.Booster()  # XGBoost 已训练好的模型对象
         if not settings.LIGHTEN:
             try:
                 import torch.cuda
@@ -293,9 +293,9 @@ class RAGFlowPdfParser:
                 b["H_right"] = spans[ii]["x1"]
                 b["SP"] = ii
 
-    def __ocr(self, pagenum, img, chars, ZM=3, device_id: int | None = None):
+    def __ocr(self, pagenum, img, chars, ZM=3, device_id: int | None = None):  # 对单个页面图像执行实际的文本识别工作
         start = timer()
-        bxs = self.ocr.detect(np.array(img), device_id)
+        bxs = self.ocr.detect(np.array(img), device_id)  # 文本框检测
         logging.info(f"__ocr detecting boxes of a image cost ({timer() - start}s)")
 
         start = timer()
@@ -303,7 +303,7 @@ class RAGFlowPdfParser:
             self.boxes.append([])
             return
         bxs = [(line[0], line[1][0]) for line in bxs]
-        bxs = Recognizer.sort_Y_firstly(
+        bxs = Recognizer.sort_Y_firstly(  # 将文本框从上到下初步排序
             [{"x0": b[0][0] / ZM, "x1": b[1][0] / ZM,
               "top": b[0][1] / ZM, "text": "", "txt": t,
               "bottom": b[-1][1] / ZM,
@@ -991,7 +991,7 @@ class RAGFlowPdfParser:
     @staticmethod
     def total_page_number(fnm, binary=None):
         try:
-            with sys.modules[LOCK_KEY_pdfplumber]:
+            with sys.modules[LOCK_KEY_pdfplumber]:  # 全局唯一锁对象 线程安全操作文档
                 pdf = pdfplumber.open(
                     fnm) if not binary else pdfplumber.open(BytesIO(binary))
             total_page = len(pdf.pages)
@@ -1016,7 +1016,7 @@ class RAGFlowPdfParser:
                 with (pdfplumber.open(fnm) if isinstance(fnm, str) else pdfplumber.open(BytesIO(fnm))) as pdf:
                     self.pdf = pdf
                     self.page_images = [p.to_image(resolution=72 * zoomin, antialias=True).annotated for i, p in
-                                        enumerate(self.pdf.pages[page_from:page_to])]
+                                        enumerate(self.pdf.pages[page_from:page_to])]  # 标准PDF分辨率为 72 DPI（dots per inch）
 
                     try:
                         self.page_chars = [[c for c in page.dedupe_chars().chars if self._has_color(c)] for page in self.pdf.pages[page_from:page_to]]
@@ -1055,15 +1055,15 @@ class RAGFlowPdfParser:
         logging.debug("Images converted.")
         self.is_english = [re.search(r"[a-zA-Z0-9,/¸;:'\[\]\(\)!@#$%^&*\"?<>._-]{30,}", "".join(
             random.choices([c["text"] for c in self.page_chars[i]], k=min(100, len(self.page_chars[i]))))) for i in
-            range(len(self.page_chars))]
+            range(len(self.page_chars))]  # 每页是否为英文文档
         if sum([1 if e else 0 for e in self.is_english]) > len(
                 self.page_images) / 2:
             self.is_english = True
         else:
             self.is_english = False
 
-        async def __img_ocr(i, id, img, chars, limiter):
-            j = 0
+        async def __img_ocr(i, id, img, chars, limiter):  # 单个PDF页面的文本识别
+            j = 0   # 检测英文单词之间的间隔，当两个连续字符组是英文或数字，且它们之间的空间足够大时，添加空格。 英文文档词间隔处理
             while j + 1 < len(chars):
                 if chars[j]["text"] and chars[j + 1]["text"] \
                         and re.match(r"[0-9a-zA-Z,.:;!%]+", chars[j]["text"] + chars[j + 1]["text"]) \
@@ -1072,7 +1072,7 @@ class RAGFlowPdfParser:
                     chars[j]["text"] += " "
                 j += 1
 
-            if limiter:
+            if limiter:  # Trio的并发限制器控制OCR处理，避免同时运行过多任务导致资源耗尽
                 async with limiter:
                     await trio.to_thread.run_sync(lambda: self.__ocr(i + 1, img, chars, zoomin, id))
             else:
@@ -1108,7 +1108,7 @@ class RAGFlowPdfParser:
 
         start = timer()
 
-        trio.run(__img_ocr_launcher)
+        trio.run(__img_ocr_launcher)  # 并行处理多页面的OCR（光学识别符）任务
 
         logging.info(f"__images__ {len(self.page_images)} pages cost {timer() - start}s")
 
@@ -1373,22 +1373,32 @@ if __name__ == "__main__":
             output_text_file = output_dir / f"{Path(args.file_path).stem}_sections.txt"
             with open(output_text_file, "w", encoding="utf-8") as f:
                 for i, section in enumerate(sections):
-                    f.write(f"--- Section {i+1} (Layout: {section.get('layout_type', 'N/A')}) ---\n")
-                    f.write(parser.remove_tag(section['text']) + "\n\n")
+                    if isinstance(section, dict):
+                        f.write(f"--- Section {i+1} (Layout: {section.get('layout_type', 'N/A')}) ---\n")
+                        f.write(parser.remove_tag(section['text']) + "\n\n")
+                    else:
+                        # Handle when section is a string or tuple
+                        section_text = section[0] if isinstance(section, tuple) else section
+                        f.write(f"--- Section {i+1} ---\n")
+                        f.write(parser.remove_tag(section_text) + "\n\n")
             logger.info(f"Saved {len(sections)} sections to {output_text_file}")
 
             # Save tables
             if tables:
                 output_table_file = output_dir / f"{Path(args.file_path).stem}_tables.html"
                 with open(output_table_file, "w", encoding="utf-8") as f:
-                    for i, (table_img, html_content) in enumerate(tables):
+                    for i, table_entry in enumerate(tables):
                         f.write(f"<h2>Table {i+1}</h2>\n")
-                        f.write(html_content)
-                        f.write("<hr>\n")
-                        if not args.no_image and table_img:
-                            img_path = output_dir / f"table_{i+1}.png"
-                            table_img.save(img_path)
-                            f.write(f'<img src="table_{i+1}.png" alt="Table {i+1} image"><br><br>')
+                        if isinstance(table_entry, tuple) and len(table_entry) >= 2:
+                            table_img, html_content = table_entry
+                            f.write(html_content if isinstance(html_content, str) else str(html_content))
+                            f.write("<hr>\n")
+                            if not args.no_image and table_img:
+                                img_path = output_dir / f"table_{i+1}.png"
+                                table_img.save(img_path)
+                                f.write(f'<img src="table_{i+1}.png" alt="Table {i+1} image"><br><br>')
+                        else:
+                            f.write(f"<p>Table format not recognized</p><hr>\n")
                 logger.info(f"Saved {len(tables)} tables to {output_table_file}")
 
             # Save cropped images for sections
@@ -1418,7 +1428,7 @@ if __name__ == "__main__":
 
     # Setup command-line argument parser
     parser = argparse.ArgumentParser(description='Test PDF parsing functionality.')
-    parser.add_argument('file_path', default='', type=str, help='Path to the PDF file to be parsed.')
+    parser.add_argument('--file_path', default='/Users/wangshuang/Downloads/resume/resume_ws.pdf', type=str, help='Path to the PDF file to be parsed.')
     parser.add_argument('--parser', type=str, choices=['deepdoc', 'plain'], default='deepdoc', help='The parser to use.')
     parser.add_argument('--from-page', type=int, default=0, help='The starting page for parsing.')
     parser.add_argument('--to-page', type=int, default=10000, help='The ending page for parsing.')

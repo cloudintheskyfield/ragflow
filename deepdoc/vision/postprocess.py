@@ -41,6 +41,16 @@ def build_post_process(config, global_config=None):
 class DBPostProcess:
     """
     The post process for Differentiable Binarization (DB).
+    微分二值化（Differentiable Binarization）：文本检测任务的技术，设计了一个可微分的二值化模块，继承到深度神经网络中
+        传统文本检测：二值化操作（将图像转换为只有黑白两种两种颜色的过程）不可微，使得模型训练时难以进行端到端的优化。
+
+        关键步骤：
+            1. 特征提取：卷积（ResNet、MobileNet）从输入图像中提起特征图
+            2. 概率图生成：通过卷积层生成概率图，概率图中每个像素值表示该位置属于文本区域的概率
+            3. 阈值图生成：通过卷积层生成阈值图，该图为每个像素提供自适应的二值化阈值
+            4. 可微分二值化：借助提出的可微分二值化函数，结合概率图和阈值图生成近似二值化图。 函数可微可以在反向传播更新网络参数
+            5. 文本框提取，基于近视二值化图提取文本框
+
     """
 
     def __init__(self,
@@ -116,20 +126,20 @@ class DBPostProcess:
     def boxes_from_bitmap(self, pred, _bitmap, dest_width, dest_height):
         '''
         _bitmap: single map with shape (1, H, W),
-                whose values are binarized as {0, 1}
+                whose values are binarized as {0, 1}  二值图中提取四边形文本框
         '''
 
         bitmap = _bitmap
         height, width = bitmap.shape
-
+        # 从二值图中提取所有文本区域的轮廓 RETR_LIST为不构建层次关系 CHAIN_APPROX_SIMPLE压缩轮廓点 True -> 255 True 0 False. 无符号8位整数. *255后得到OpenCV接受的标准的二值图（像素值0或255）
         outs = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST,
                                 cv2.CHAIN_APPROX_SIMPLE)
         if len(outs) == 3:
             _img, contours, _ = outs[0], outs[1], outs[2]
         elif len(outs) == 2:
-            contours, _ = outs[0], outs[1]
+            contours, _ = outs[0], outs[1]  # _：包含每个轮廓与其他轮廓的关系信息（Next、Previous、FirstChild、Parent）
 
-        num_contours = min(len(contours), self.max_candidates)
+        num_contours = min(len(contours), self.max_candidates)  # 返回的轮廓已按面积排序、因此重要的文本区域在前侧、限制处理的轮廓数量
 
         boxes = []
         scores = []
@@ -139,19 +149,19 @@ class DBPostProcess:
             if sside < self.min_size:
                 continue
             points = np.array(points)
-            if self.score_mode == "fast":
+            if self.score_mode == "fast":  # 快速评分、使用文本框的外界矩形进行评分、计算速度快、对倾斜或不规则文本、可能导致不完全精确
                 score = self.box_score_fast(pred, points.reshape(-1, 2))
             else:
-                score = self.box_score_slow(pred, contour)
+                score = self.box_score_slow(pred, contour)  # 文本的精确多边形轮廓进行评分
             if self.box_thresh > score:
                 continue
 
             box = self.unclip(points, self.unclip_ratio).reshape(-1, 1, 2)
-            box, sside = self.get_mini_boxes(box)
-            if sside < self.min_size + 2:
+            box, sside = self.get_mini_boxes(box)   # sside: 文本框的最短边长度
+            if sside < self.min_size + 2:  # 删除过小可能为噪声的文本框 个工程上的容差
                 continue
             box = np.array(box)
-
+            # 0: 裁剪下限、 dest_width：裁剪上限。 x坐标归一化
             box[:, 0] = np.clip(
                 np.round(box[:, 0] / width * dest_width), 0, dest_width)
             box[:, 1] = np.clip(
@@ -160,32 +170,32 @@ class DBPostProcess:
             scores.append(score)
         return np.array(boxes, dtype="int32"), scores
 
-    def unclip(self, box, unclip_ratio):
+    def unclip(self, box, unclip_ratio):  # 将初步检测到的文本框向外扩展、确保能完整的包围整个区域、可能导致初始轮廓比实际文本区域小 会切掉字符的边缘
         poly = Polygon(box)
-        distance = poly.area * unclip_ratio / poly.length
+        distance = poly.area * unclip_ratio / poly.length  # 自适应扩展策略、根据文本的面积和周长来扩展距离
         offset = pyclipper.PyclipperOffset()
-        offset.AddPath(box, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)
-        expanded = np.array(offset.Execute(distance))
+        offset.AddPath(box, pyclipper.JT_ROUND, pyclipper.ET_CLOSEDPOLYGON)  # 偏移器创建
+        expanded = np.array(offset.Execute(distance))  # 将原始多边形的每条边向外平移distance的距离、从而生成一个更大的新多边形
         return expanded
 
-    def get_mini_boxes(self, contour):
-        bounding_box = cv2.minAreaRect(contour)
-        points = sorted(list(cv2.boxPoints(bounding_box)), key=lambda x: x[0])
+    def get_mini_boxes(self, contour):  # # 从不规则轮廓中提取标准化的四边形边界框  Counter
+        bounding_box = cv2.minAreaRect(contour)  # 包含轮廓的最小面积矩形
+        points = sorted(list(cv2.boxPoints(bounding_box)), key=lambda x: x[0])  # 获取矩形的四个顶点
 
         index_1, index_2, index_3, index_4 = 0, 1, 2, 3
-        if points[1][1] > points[0][1]:
+        if points[1][1] > points[0][1]:  # 确定左侧两点中哪个是左上角，哪个是左下角
             index_1 = 0
             index_4 = 1
         else:
             index_1 = 1
             index_4 = 0
-        if points[3][1] > points[2][1]:
+        if points[3][1] > points[2][1]:  # 确定右侧两点中哪个是右上角，哪个是右下角
             index_2 = 2
             index_3 = 3
         else:
             index_2 = 3
             index_3 = 2
-
+        # 左上→右上→右下→左下（顺时针方向）
         box = [
             points[index_1], points[index_2], points[index_3], points[index_4]
         ]
@@ -233,22 +243,22 @@ class DBPostProcess:
         pred = outs_dict['maps']
         if not isinstance(pred, np.ndarray):
             pred = pred.numpy()
-        pred = pred[:, 0, :, :]
-        segmentation = pred > self.thresh
+        pred = pred[:, 0, :, :]  # 提取概率
+        segmentation = pred > self.thresh  # 分割图、浮点型、布尔型或其他
 
         boxes_batch = []
         for batch_index in range(pred.shape[0]):
             src_h, src_w, ratio_h, ratio_w = shape_list[batch_index]
             if self.dilation_kernel is not None:
-                mask = cv2.dilate(
+                mask = cv2.dilate(  # 膨胀 图像中的白色区域变大 分割结果边缘太细 膨胀一下更明显
                     np.array(segmentation[batch_index]).astype(np.uint8),
                     self.dilation_kernel)
             else:
                 mask = segmentation[batch_index]
-            if self.box_type == 'poly':
+            if self.box_type == 'poly':  # 生成不规则的多边形边界框 适合弯曲文本
                 boxes, scores = self.polygons_from_bitmap(pred[batch_index],
                                                           mask, src_w, src_h)
-            elif self.box_type == 'quad':
+            elif self.box_type == 'quad':  # quad生成四边形边界框 适合正常垂直文本
                 boxes, scores = self.boxes_from_bitmap(pred[batch_index], mask,
                                                        src_w, src_h)
             else:
@@ -345,7 +355,20 @@ class BaseRecLabelDecode:
 
 
 class CTCLabelDecode(BaseRecLabelDecode):
-    """ Convert between text-label and text-index """
+    """ Convert between text-label and text-index
+        Connectionist Temporal Classification 连接时序分类，一种深度学习中处理序列数据的损失函数与解码算法，主要
+            用于解决输入序列和输出序列在时序上难以对齐的问题，常用于语音识别、光学字符识别（OCR）。
+
+        语音识别中：输入音频信号是连续的长序列，而输出的文本是离散的单词或字符序列，难以预先知道每个字符对应音频中
+            的具体位置； OCR任务中，输入的图像里文字的位置和数量也不固定，难以将图像特征和文本字符一一对应，CTC
+            能有效处理这类输入输出序列长度不一致、对齐困难的问题。
+
+        损失函数：CTC损失函数用于衡量模型预测结果与真实标签之间的差异，通过引入一个特殊的“空白”（blank）符号，允许模型
+            在预测时跳过部分输入帧率，从而解决输入输出序列长度不匹配的问题。训练时，模型会尝试最小化CTC，来学习输入序列
+            到输出序列的映射关系
+        解码算法：训练完成后，需要将模型输出的概率分布转换为最终的标签序列。常见的CTC解码有贪心（Greedy Decoding）和
+            束搜索解码（Beam Search Decoding）
+     """
 
     def __init__(self, character_dict_path=None, use_space_char=False,
                  **kwargs):

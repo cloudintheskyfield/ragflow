@@ -167,6 +167,16 @@ class LayoutRecognizer(Recognizer):
 
 
 class LayoutRecognizer4YOLOv10(LayoutRecognizer):
+    """
+        基于 YOLOv10 （You Only Look Once 美团视觉团队）模型进行文档布局识别
+            实现文档图像的布局识别，包括图像预处理、模型推理后的后处理、最终识别出文档中不同元素（标题、文本、图标）的位置和类型
+        YOLOv10: 目标检测领域经典且高效的实时目标检测算法
+            传统的YOLO使用NMS（非极大值抑制）移除重复框，YOLOv10直接用网络输出作为最终预测、训练、推理更一致
+            更高效的 EfficientRep Backbone + Detection Head
+            新的标签分配策略，提升小目标识别能力和整体精度
+        paper： https://arxiv.org/abs/2404.03904
+        code： https://github.com/Meituan-AutoML/YOLOv10
+    """
     labels = [
         "title",
         "Text",

@@ -1,0 +1,109 @@
+王爽 - AI算法⼯程师 
+  
+ 基本信息 
+电话: 13121032925
+邮箱: obstaclesws@qq.com
+地点: 北京市
+状态: 在职
+ 教育背景 
+院校: 河北⼤学⼯商学院
+专业: 计算机科学与技术
+学历: 本科 (2018.09 - 2022.06)
+ 专业技能 
+ LLM 训练与微调:
+精通 Python,熟练运⽤ PyTorch, Transformers, DeepSpeed 等主流框架进⾏单机多卡/单卡 LLM ⾼效训练与微调。
+深⼊理解并熟练应⽤模型训练优化技术，包括 FP16/BF16 混合精度, LoRA, 梯度检查点, 梯度累积等。
+熟练掌握模型量化（Quantization）及不同格式间的转换技术。
+熟练使⽤ llama.cpp, vLLM 等推理框架，并通过 Flash Attention, Smooth Sampler 等技术优化推理性能。
+ LLM 应⽤开发与架构:
+熟练基于 LangChain, LangGraph, RagFlow 的 LLM 应⽤开发，尤其在 Agentic RAG 和 Multi-Agent 系统⽅⾯有丰富实践。
+具备 LLM 原⽣应⽤架构设计能⼒，能基于 Pydantic,参考业界优秀框架（MetaGPT, AgentScope, OpenManus, LangGraph)思想从零构建。
+熟悉 Ollama, llama.cpp, x-interface, one-api 等多种 LLM 服务化部署⽅案。
+熟练结合 AI IDE (Cursor) 与 PyCharm Professional 加速开发流程，精通 Agent 和 Multi-Agent 应⽤的设计与开发。
+ 熟悉市⾯上最新常⻅的LLM:
+OpenAI: GPT-4.5, GPT-4o, GPT-4o-mini, GPT-3.5-turbo, o1-preview, GPT-4.1, GPT-o3
+Google: Gemini 2.5 Pro Gemini 2.5 Flash
+Anthropic: Claude 3.7 Sonnet Claude 4 Sonnet
+开源模型: Llama-3.1 8B, DeepSeek-V3, DeepSeek-V2, MoE (Dark Champion)
+MergeKit 进⾏模型合并
+ 机器学习、深度学习、数据处理、开源项⽬:
+熟练运⽤ PyTorch, Tensorflow 进⾏传统模型（如 GAN, VAE)的开发与调试。
+精通使⽤ Scipy, Numpy, Pandas 等库进⾏⾼效的数据处理、清洗与分析。
+熟悉了解多种⽹络模型、传统⽹络层、机器学习模型 Transformer、BERT Distil、GRU、LSTM、RNN、SVM、K-means、CPTN（⽂字识别）、CRNN（锚点检测）、GAN、
+Word2Vec、BGE、孤⽴森林、logistic回归等及⼈⼯智能的常⻅基础知识及常⻅的NLP任务
+开源项⽬：Chinese-LlaMA、Langchain-Chatchat、One-api、meta-gpt、pytorch-CycleGAN、pytorch-video-recognition、ocr.pytorch、tensorflow-bert、text-
+generation-webui等
+ 后端开发:
+精通 Python 后端开发 (FastAPI, Flask)，熟悉 Restful API 设计原则。
+熟练运⽤ Celery, Kafka, Docker, MySQL, Redis, MongoDB 等技术栈构建⾼可⽤、可扩展的后端服务。
+ 语⾔能⼒: CET-6 (532分)，可流畅阅读英⽂技术⽂献，具备出⾊的中英⽂技术交流能⼒。
+ 项⽬经历 
+ Puti - An Extensible Multi-Agent AI Framework (个⼈核⼼开源项⽬) 
+⻆⾊: 核⼼开发者与架构师
+时间: 2024.12 - ⾄今
+GitHub开源链接: https://github.com/aivoyager/puti
+项⽬概述: 独⽴设计并开发了⼀款优雅、可扩展的多智能体（Multi-Agent）AI框架。Puti旨在简化由⼤型语⾔模型（LLM）驱动的⾃主智能体应⽤的开发，提供了⼀个结构化的架构，⽤于创
+建、管理和协调能够协同解决复杂任务的智能体框架。
+核⼼功能与技术实现:
+原⽣多智能体架构: 基于 Pydantic 从零开始构建，未使⽤ LangChain.设计了事件驱动的通信机制，包括全局消息池、⻆⾊订阅和MCP协议，实现了智能体之间的⾼效协作。
+交互式CLI应⽤: 使⽤ Click 和 Rich库为不同的智能体（如全能型Alex和Twitter专⽤型Ethan）开发了⽤户友好的交互式命令⾏界⾯，极⼤地提升了可⽤性。
+动态配置与安全: 实现了智能化的配置引导系统。⾸次运⾏时，能⾃动检测并提示⽤户输⼊缺失的API密钥（如OpenAI）或⽂件路径（如Twikit Cookie），并安全地将其保存于本
+地.env⽂件。
+可扩展的⼯具系统: 为智能体设计并集成了⼀套强⼤的⼯具集，包括实时Web搜索、本地⽂件读写、代码执⾏和安全的终端访问，赋予智能体解决现实世界问题的能⼒。
+鲁棒的API集成: 为Ethan智能体集成了Twikit⼯具，并实现了包含三次重试和会-话验证的鲁棒登录逻辑，确保了与Twitter API交互的稳定性，并在验证失败时向⽤户提供清晰的错误
+提示。
+多模型⽀持: 框架设计⽀持⽆缝接⼊和管理来⾃多个平台（如OpenAI, Google, DeepSeek等）的LLM，增强了灵活性和可扩展性。
+ X 推特智能聊天机器⼈ 
+⻆⾊: 核⼼开发者
+时间: 2025.01 - ⾄今
+描述:
+基于 Llama-3.1-8B-Instruct chat, DeepSeek R1 14B 等模型，在 4090/A10 GPU 上进⾏微调，并结合 Gemini 2.5 Pro API 和 RAG 技术实现⾼质量的⼈物⻆⾊扮演。
+使⽤ Twitter 公开数据构建指令微调（Instruction-tuning）数据集，并进⾏精细的数据清洗与格式化。
+将训练后的模型量化为 GGUF 格式，通过 FastAPI 封装为 API 服务，并利⽤ Ollama/llama.cpp 进⾏⾼效部署。
+实现了特定⼈物（如 Trump, CZ）⼝吻的模仿，并能⾃动⽣成与回复⾼质量推⽂，最终作为核⼼功能集成⾄ Puti 框架。
+ OopsAI 货币分析⼩助⼿ 
+⻆⾊: 核⼼开发者
+时间: 2025.01 - 2024.02
+描述:
+针对特定加密货币（通过合约地址识别），开发了⼀款结合 OpenAI API 的 AI 助⼿，可⽣成专业货币分析报告或与⽤户进⾏深度对话。
+基于 LangChain 和 LangGraph 设计了意图识别与货币分析的双 Agent 协作流程。
+利⽤ Docker Compose, Docker Swarm 及 GitHub Workflow 实现了项⽬的⾃动化部署与运维（CI/CD）。
+ 数据同化⼤⽓指标预测 (科研课题) 
+⻆⾊: 核⼼开发者
+时间: 2023.09 - 2024.01
+描述:
+融合卫星遥感与地⾯观测站的多源数据，基于机器学习模型对⼤⽓ PM2.5 等关键指标进⾏⾼精度预测。
+深⼊研究并实现了 ENKF （集合卡尔曼滤波）和 4D-Var（四维变分同化）两种主流数据同化⽅案，并通过对⽐实验验证了 4D-Var 在该任务上的优越性，最终模型预测精度达到 0.92.
+ ⼯作经历 
+ 北京斯科赛思德⽹络科技有限公司 (2024.12 - ⾄今) 
+职位: AI算法⼯程师 (区块链/游戏领域)
+职责:
+负责加密货币分析项⽬中 AI 相关模块的核⼼研发。
+主导 Puti Multi-Agent 开源项⽬的架构设计、核⼼开发与社区维护。
+进⾏ LLM 模型的训练、微调、量化与部署优化.
+ 新纽科技有限公司 (外包⾄ 中央国债登记结算有限责任公司) (2024.06 - 2024.11) 
+职位: 算法⼯程师 (⽹络安全领域)
+职责:
+研究基于 GAN 及其变体的恶意 DGA (域名⽣成算法) 的对抗性⽣成⽅法。
+跟踪⽹络安全领域技术前沿，撰写深度技术分析报告。
+进⾏密码学相关研究及专利撰写。
+ 留服数科（北京）科技有限公司 (2024.03 - 2024.06) 
+职位: Python 后端开发⼯程师 (留学缴费业务)
+职责:
+主导负责后台订单系统的框架重构 (从 Django 迁移⾄ Flask)。
+维护并优化现有后台管理系统。
+独⽴设计并开发了⽤于海外留学⾃动下单的 RPA 系统，显著提升业务效率，节约⼈⼒成本。
+ 北京英视睿达科技股份有限公司 (2022.02 - 2024.03) 
+职位: Python 后端开发⼯程师 / 算法⼯程师 (⽓象⽣态环境)
+职责:
+开发并维护图像⾃动化批处理系统。
+负责后端 API 接⼝的设计与开发。
+参与⼤⽓项⽬相关的机器学习/深度学习算法研发。
+撰写"基于分布式索引划分国⼟空间与时空数据库融合"相关专利 (已受理)。
+ ⾃我评价 
+算法理论基础扎实，拥有丰富的中英⽂⽂献阅读、LLM 及算法研究经验、丰富的开源项⽬阅览经理。
+具备主导从零到⼀的开源项⽬（Puti）开发与架构能⼒，并有成功撰写专利的经历。
+对 AI 领域（特别是 LLM）抱有巨⼤热情，具备卓越的持续学习能⼒和解决复杂问题的能⼒。
+⼯作效率⾼，注重代码质量与软件⼯程实践，善于发现并解决问题，积极拥抱并应⽤前沿技术。
+ 个⼈兴趣 
+⽻⽑球、骑⾏、健身、游泳。

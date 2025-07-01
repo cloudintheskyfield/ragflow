@@ -29,6 +29,11 @@ from . import operators
 from .ocr import load_model
 
 class Recognizer:
+    """
+
+
+    """
+
     def __init__(self, label_list, task_name, model_dir=None):
         """
         If you have trouble downloading HuggingFace models, -_^ this might help!!
@@ -53,6 +58,9 @@ class Recognizer:
 
     @staticmethod
     def sort_Y_firstly(arr, threshold):
+        """
+            按照元素的 Y 坐标（垂直）排序、用于将文本按照从上到下的阅读顺序排序
+        """
         def cmp(c1, c2):
             diff = c1["top"] - c2["top"]
             if abs(diff) < threshold:

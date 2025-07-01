@@ -71,7 +71,7 @@ def load_model(model_dir, nm, device_id: int | None = None):
     model_file_path = os.path.join(model_dir, nm + ".onnx")
     model_cached_tag = model_file_path + str(device_id) if device_id is not None else model_file_path
 
-    global loaded_models
+    global loaded_models  # 模型缓存
     loaded_model = loaded_models.get(model_cached_tag)
     if loaded_model:
         logging.info(f"load_model {model_file_path} reuses cached model")
@@ -438,18 +438,18 @@ class TextDetector:
     def order_points_clockwise(self, pts):
         rect = np.zeros((4, 2), dtype="float32")
         s = pts.sum(axis=1)
-        rect[0] = pts[np.argmin(s)]
-        rect[2] = pts[np.argmax(s)]
+        rect[0] = pts[np.argmin(s)]  # 左上角（x + y最小）
+        rect[2] = pts[np.argmax(s)]  # 右下角（x + y最大）
         tmp = np.delete(pts, (np.argmin(s), np.argmax(s)), axis=0)
         diff = np.diff(np.array(tmp), axis=1)
-        rect[1] = tmp[np.argmin(diff)]
-        rect[3] = tmp[np.argmax(diff)]
+        rect[1] = tmp[np.argmin(diff)]  # 右上角（y - x最小）
+        rect[3] = tmp[np.argmax(diff)]  # 左下角（y - x最大）
         return rect
-
+    # 模型预测误差（神经网络预测不完美）、几何变换（计算可能产生轻微的越界）、浮点数到整数的转换也可能会引入微小的误差
     def clip_det_res(self, points, img_height, img_width):
-        for pno in range(points.shape[0]):
-            points[pno, 0] = int(min(max(points[pno, 0], 0), img_width - 1))
-            points[pno, 1] = int(min(max(points[pno, 1], 0), img_height - 1))
+        for pno in range(points.shape[0]):  # 每个顶点的x坐标
+            points[pno, 0] = int(min(max(points[pno, 0], 0), img_width - 1))  # max(points[pno, 0], 0) 确保不会为负数。 min(max(points[pno, 0], 0), img_width - 1) x坐标的最大有效值
+            points[pno, 1] = int(min(max(points[pno, 1], 0), img_height - 1))  # y坐标
         return points
 
     def filter_tag_det_res(self, dt_boxes, image_shape):
@@ -458,11 +458,11 @@ class TextDetector:
         for box in dt_boxes:
             if isinstance(box, list):
                 box = np.array(box)
-            box = self.order_points_clockwise(box)
-            box = self.clip_det_res(box, img_height, img_width)
-            rect_width = int(np.linalg.norm(box[0] - box[1]))
-            rect_height = int(np.linalg.norm(box[0] - box[3]))
-            if rect_width <= 3 or rect_height <= 3:
+            box = self.order_points_clockwise(box)  # 文本框的四个顶点都遵循一个统一的顺时针顺序（通常是左上 -> 右上 -> 右下 -> 左下）
+            box = self.clip_det_res(box, img_height, img_width)  # 确保文本框的所有顶点坐标都不会超出原始图像的边界，将任何超出范围的坐标（小于0或大于图像宽高）强制拉回到边界上
+            rect_width = int(np.linalg.norm(box[0] - box[1]))  # 相似宽度
+            rect_height = int(np.linalg.norm(box[0] - box[3]))  # 相似高度
+            if rect_width <= 3 or rect_height <= 3:  # 文本框宽度或者高度小于一个非常小的像素值（3像素）认为为噪声点
                 continue
             dt_boxes_new.append(box)
         dt_boxes = np.array(dt_boxes_new)
@@ -493,17 +493,17 @@ class TextDetector:
         img = img.copy()
         input_dict = {}
         input_dict[self.input_tensor.name] = img
-        for i in range(100000):
+        for i in range(100000):  # 重试机制，为解决深度学习模型推理过程中遇到的瞬时故障设计
             try:
-                outputs = self.predictor.run(None, input_dict, self.run_options)
+                outputs = self.predictor.run(None, input_dict, self.run_options)  # 单通道的概率热图，每个像素值表示该位置属于文本区域的概率
                 break
             except Exception as e:
                 if i >= 3:
                     raise e
-                time.sleep(5)
+                time.sleep(5)  # GPU内存分配失败、多进程、适用于大量文档批处理场景
 
         post_result = self.postprocess_op({"maps": outputs[0]}, shape_list)
-        dt_boxes = post_result[0]['points']
+        dt_boxes = post_result[0]['points']  # detected boxes
         dt_boxes = self.filter_tag_det_res(dt_boxes, ori_im.shape)
 
         return dt_boxes, time.time() - st
@@ -654,7 +654,7 @@ class OCR:
             time_dict['all'] = end - start
             return None, None, time_dict
 
-        return zip(self.sorted_boxes(dt_boxes), [
+        return zip(self.sorted_boxes(dt_boxes), [  # 为每个文本框附上一个空文本和占位符
                    ("", 0) for _ in range(len(dt_boxes))])
 
     def recognize(self, ori_im, box, device_id: int | None = None):

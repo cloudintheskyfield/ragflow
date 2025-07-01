@@ -350,7 +350,7 @@ class DetResizeForTest:
 
     def resize_image_type0(self, img):
         """
-        resize image to a size multiple of 32 which is required by the network
+        resize image to a size multiple of 32 which is required by the network （32倍数 符合神经网络输入要求）
         args:
             img(array): array with shape [h, w, c]
         return(tuple):
@@ -368,7 +368,7 @@ class DetResizeForTest:
                     ratio = float(limit_side_len) / w
             else:
                 ratio = 1.
-        elif self.limit_type == 'min':
+        elif self.limit_type == 'min':  # 按照最小边缩放
             if min(h, w) < limit_side_len:
                 if h < w:
                     ratio = float(limit_side_len) / h
